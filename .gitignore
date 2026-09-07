@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.npm-cache/
+
+# Build outputs & caches
+dist/
+dist-server/
+.vite/
+*.tsbuildinfo
+
+# Database & Runtime data
+data/
+*.sqlite
+*.sqlite-journal
+*.db
+
+# Environment & Vercel
+.env
+.env.local
+.env.*.local
+.vercel
+
+# System files
+.DS_Store
+Thumbs.db
