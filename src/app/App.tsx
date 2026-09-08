@@ -19,12 +19,18 @@ const friendlyDateError = (message: string) =>
     ? "This date already exists."
     : message;
 
+const friendlyNameError = (message: string) =>
+  message.toLowerCase().includes("already exists") || message.toLowerCase().includes("unique constraint")
+    ? "This name already exists."
+    : message;
+
 export function App() {
   const [started, setStarted] = useState(false);
   const [people, setPeople] = useState<Person[]>([]);
   const [lunchDays, setLunchDays] = useState<LunchDay[]>([]);
   const [selectedDay, setSelectedDay] = useState<LunchDay | null>(null);
   const [name, setName] = useState("");
+  const [nameError, setNameError] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [dateError, setDateError] = useState("");
   const [error, setError] = useState("");
@@ -62,15 +68,26 @@ export function App() {
 
   const submitPerson = async (event: FormEvent) => {
     event.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setNameError("Enter a name.");
+      return;
+    }
+    const duplicate = people.some(
+      (person) => !person.archived && person.displayName.toLowerCase() === trimmed.toLowerCase(),
+    );
+    if (duplicate) {
+      setNameError("This name already exists.");
+      return;
+    }
     try {
-      await request("/api/people", { method: "POST", body: JSON.stringify({ displayName: name }) });
+      await request("/api/people", { method: "POST", body: JSON.stringify({ displayName: trimmed }) });
       setName("");
+      setNameError("");
       pushToast("success", "Person added.");
       await refreshLists();
     } catch (failure) {
-      const message = (failure as Error).message;
-      setError(message);
-      pushToast("error", message);
+      setNameError(friendlyNameError((failure as Error).message));
     }
   };
 
@@ -109,15 +126,20 @@ export function App() {
 
   const updateAttendanceEntry = async (personId: number, changes: { attending?: boolean; bringsHomeFood?: boolean }) => {
     if (!selectedDay) return;
-    const nextAttendance = selectedDay.attendance.map((entry) => {
-      if (entry.personId !== personId) return entry;
-      const attending = changes.attending ?? entry.attending;
-      return { ...entry, attending, bringsHomeFood: attending ? (changes.bringsHomeFood ?? entry.bringsHomeFood) : false };
+    const lunchDayId = selectedDay.id;
+    let nextAttendance = selectedDay.attendance;
+    setSelectedDay((current) => {
+      if (!current || current.id !== lunchDayId) return current;
+      nextAttendance = current.attendance.map((entry) => {
+        if (entry.personId !== personId) return entry;
+        const attending = changes.attending ?? entry.attending;
+        return { ...entry, attending, bringsHomeFood: attending ? (changes.bringsHomeFood ?? entry.bringsHomeFood) : false };
+      });
+      return { ...current, attendance: nextAttendance };
     });
-    setSelectedDay({ ...selectedDay, attendance: nextAttendance });
     try {
-      const day = await request<LunchDay>(`/api/lunch-days/${selectedDay.id}/attendance`, { method: "PUT", body: JSON.stringify({ attendance: nextAttendance }) });
-      setSelectedDay(day);
+      const day = await request<LunchDay>(`/api/lunch-days/${lunchDayId}/attendance`, { method: "PUT", body: JSON.stringify({ attendance: nextAttendance }) });
+      setSelectedDay((current) => (current && current.id === day.id ? day : current));
     } catch (failure) {
       pushToast("error", (failure as Error).message);
     }
@@ -159,9 +181,10 @@ export function App() {
       <div>
         <h2>People</h2>
         <form onSubmit={submitPerson}>
-          <input data-testid="roster-name-input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Display name" />
-          <button className="btn-primary" data-testid="roster-add-button">Add</button>
+          <input data-testid="roster-name-input" value={name} onChange={(event) => { setName(event.target.value); setNameError(""); }} placeholder="Display name" />
+          <button className="btn-primary" type="submit" data-testid="roster-add-button">Add</button>
         </form>
+        {nameError && <p className="error" data-testid="roster-name-error" role="alert">{nameError}</p>}
         <ul>
           {people.filter((person) => !person.archived).map((person) => (
             <li key={person.id}>

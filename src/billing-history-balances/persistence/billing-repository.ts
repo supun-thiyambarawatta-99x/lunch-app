@@ -80,7 +80,11 @@ export class BillingRepository {
   listBalances(): PersonBalance[] {
     return database
       .prepare(
-        `SELECT p.id AS person_id, p.display_name, COALESCE(SUM(CASE WHEN c.paid = 0 THEN c.amount ELSE 0 END), 0) AS outstanding_amount FROM people p LEFT JOIN charges c ON c.person_id = p.id GROUP BY p.id, p.display_name ORDER BY p.display_name`,
+        `SELECT p.id AS person_id, p.display_name, COALESCE(SUM(CASE WHEN c.paid = 0 THEN c.amount ELSE 0 END), 0) AS outstanding_amount
+         FROM people p LEFT JOIN charges c ON c.person_id = p.id
+         GROUP BY p.id, p.display_name
+         HAVING p.archived = 0 OR outstanding_amount > 0
+         ORDER BY p.display_name`,
       )
       .all()
       .map((row: any) => ({

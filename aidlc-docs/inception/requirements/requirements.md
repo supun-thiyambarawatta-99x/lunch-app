@@ -23,6 +23,8 @@ The first release is an internal web application for one office with fewer than 
 5. The coordinator can remove an accidentally added person using a red trash-icon action; the system deletes the person outright if they have no lunch-day history, or archives them and explains why if history exists.
 6. The coordinator can remove an accidentally created lunch day using a red trash-icon action, along with its attendance, group, and charge records.
 7. If the coordinator selects a date that already has a lunch record, the system displays a clear message (for example, "This date already exists.") next to the date field; the message clears automatically once the coordinator selects a different date.
+7a. If the coordinator enters a name that already belongs to an active person, the system displays an inline message ("This name already exists.") next to the name field instead of a raw database error; the message clears automatically once the coordinator edits the name. Blank or whitespace-only names are rejected inline without a server request.
+7b. People added to the roster after a lunch day was created must automatically appear in that lunch day's attendance list, defaulting to attending without home food.
 
 ### Group Allocation
 
@@ -67,7 +69,7 @@ The first release is an internal web application for one office with fewer than 
 2. Home-food attendees are counted in the daily headcount and included in group balancing, but receive no parcel-cost charge.
 3. The system must not create more parcel recommendations than necessary for the configured parcel capacity.
 4. A final order quantity may differ from the recommendation because the coordinator has authority to adjust it.
-5. An archived person remains visible in historical records but is unavailable for new lunch records.
+5. An archived person remains visible in historical records but is unavailable for new lunch records. Archived people appear in the outstanding-balances panel only while they still owe money.
 
 ## Example
 

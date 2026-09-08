@@ -39,10 +39,24 @@ export class LunchRepository {
   }
 
   createPerson(displayName: string): Person {
-    const result = database
-      .prepare("INSERT INTO people (display_name) VALUES (?)")
-      .run(displayName);
-    return { id: Number(result.lastInsertRowid), displayName, archived: false };
+    try {
+      const result = database
+        .prepare("INSERT INTO people (display_name) VALUES (?)")
+        .run(displayName);
+      return {
+        id: Number(result.lastInsertRowid),
+        displayName,
+        archived: false,
+      };
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes("UNIQUE constraint failed")
+      ) {
+        throw new Error("This name already exists.");
+      }
+      throw error;
+    }
   }
 
   archivePerson(id: number): void {
@@ -173,17 +187,34 @@ export class LunchRepository {
         "SELECT id, date, parcel_capacity, final_parcel_order, order_needs_reconfirmation FROM lunch_days WHERE id = ?",
       )
       .get(id) as LunchDayRow | undefined;
-    return day ? this.hydrateLunchDay(day) : null;
+    if (!day) return null;
+    this.backfillAttendance(day.id);
+    return this.hydrateLunchDay(day);
   }
 
   listLunchDays(): LunchDay[] {
-    return (
-      database
-        .prepare(
-          "SELECT id, date, parcel_capacity, final_parcel_order, order_needs_reconfirmation FROM lunch_days ORDER BY date DESC",
-        )
-        .all() as LunchDayRow[]
-    ).map((day) => this.hydrateLunchDay(day));
+    const days = database
+      .prepare(
+        "SELECT id, date, parcel_capacity, final_parcel_order, order_needs_reconfirmation FROM lunch_days ORDER BY date DESC",
+      )
+      .all() as LunchDayRow[];
+    days.forEach((day) => this.backfillAttendance(day.id));
+    return days.map((day) => this.hydrateLunchDay(day));
+  }
+
+  // Keeps existing lunch days in sync with people added to the roster after the day was created.
+  private backfillAttendance(lunchDayId: number): void {
+    database
+      .prepare(
+        `INSERT INTO attendance (lunch_day_id, person_id, attending, brings_home_food)
+         SELECT ?, p.id, 1, 0 FROM people p
+         WHERE p.archived = 0
+           AND NOT EXISTS (
+             SELECT 1 FROM attendance a
+             WHERE a.lunch_day_id = ? AND a.person_id = p.id
+           )`,
+      )
+      .run(lunchDayId, lunchDayId);
   }
 
   private hydrateLunchDay(day: LunchDayRow): LunchDay {

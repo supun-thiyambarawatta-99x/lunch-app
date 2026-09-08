@@ -391,6 +391,28 @@ Updated `requirements.md`: added trash-icon wording to the removal requirements,
 
 ---
 
+## Maintenance - Roster Validation and Missing-Attendee Bug Fixes
+
+**Timestamp**: 2026-09-08T12:40:00Z
+**User Input**: "people add button seems not working correctly, if I type and press enter name appear in the list but not if I click on the add button, if I enter same name UNIQUE constraint failed: people.display_name, give this error, better to validate it inline inthe textbox and show this name is already exist. users sometime vanished after create the day, outstanding list also getting updated, some names are getting missing sometime."
+
+**AI Response**: "Diagnosed and fixed several issues:
+
+1. **Root cause of 'Add button not working' and 'users vanishing'**: A stale API server process (PID 47461, started Sep 4) was still holding port 3001. It had been launched from the old project path before the project was moved into `lunch-app/`, so its SQLite directory no longer resolved and every write failed with 'attempt to write a readonly database'. Newly started servers could not bind the port, so the browser kept talking to the broken process. Stopped the stale process; after restarting cleanly, both the Add button and the Enter key were verified to work identically. This was an environment/process issue, not an application-code defect.
+
+2. **Inline duplicate-name validation**: Replaced the raw 'UNIQUE constraint failed: people.display_name' error with a friendly, inline message. `LunchRepository.createPerson` now throws 'This name already exists.', and `App.tsx` performs a client-side case-insensitive duplicate check plus blank-name check before calling the API, rendering the message via a new `roster-name-error` element that clears as soon as the coordinator edits the field.
+
+3. **Missing names bug (genuine defect)**: Attendance rows were only created as a one-time snapshot when a lunch day was created, so anyone added to the roster afterwards never appeared in that day's attendance list. Reproduced via API (`LateJoiner present? false`). Added `LunchRepository.backfillAttendance`, invoked from `getLunchDay` and `listLunchDays`, which inserts attendance rows for active people missing from a lunch day. Verified fixed (`LateJoiner present? true`).
+
+4. **Attendance race condition**: `updateAttendanceEntry` captured `selectedDay` from a stale closure, so rapid checkbox toggles could overwrite each other. Reworked to use functional `setSelectedDay` updates guarded by lunch-day id.
+
+5. **Outstanding balances noise**: `listBalances` returned every person including archived ones with a Rs 0.00 balance, which made the panel look inconsistent with the People list. Added `HAVING p.archived = 0 OR outstanding_amount > 0` so archived people appear only while they still owe money.
+
+Added two regression tests (duplicate-name inline error and blank-name rejection). Verified with `npm run build` and `npm test` (20 tests passing across 4 files), plus live browser and API verification. Updated requirements.md items 7a, 7b, and business rule 5."
+**Context**: "Post-completion maintenance; project remains COMPLETE"
+
+---
+
 ## Maintenance - Group Metrics Font Size and Layout Update
 
 **Timestamp**: 2026-09-07T10:55:03Z
