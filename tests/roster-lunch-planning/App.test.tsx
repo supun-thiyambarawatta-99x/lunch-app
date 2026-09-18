@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../src/app/App";
 
 describe("App", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    localStorage.removeItem("lunch-ledger-started");
+  });
 
   const startApp = async () => {
     fireEvent.click(screen.getByTestId("landing-start-button"));
@@ -11,6 +14,7 @@ describe("App", () => {
   };
 
   beforeEach(() => {
+    localStorage.removeItem("lunch-ledger-started");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ people: [], lunchDays: [], balances: [] }),
@@ -24,6 +28,15 @@ describe("App", () => {
     expect(screen.getByTestId("roster-add-button")).toBeInTheDocument();
     expect(screen.getByTestId("lunch-day-date-input")).toBeInTheDocument();
     expect(screen.getByTestId("lunch-day-create-button")).toBeInTheDocument();
+  });
+
+  it("restores the workspace after reload when the user has already started", async () => {
+    localStorage.setItem("lunch-ledger-started", "true");
+    render(<App />);
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/bootstrap", expect.any(Object)));
+    expect(screen.getByTestId("roster-name-input")).toBeInTheDocument();
+    expect(screen.queryByTestId("landing-start-button")).not.toBeInTheDocument();
+    localStorage.removeItem("lunch-ledger-started");
   });
 
   it("submits a new roster person", async () => {

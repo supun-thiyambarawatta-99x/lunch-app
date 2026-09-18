@@ -49,6 +49,7 @@ export function App() {
   const [orderInput, setOrderInput] = useState("");
   const [balances, setBalances] = useState<PersonBalance[]>([]);
   const { toasts, pushToast } = useToast();
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const selectedDayRef = useRef<LunchDay | null>(null);
   const attendanceSaveChain = useRef(Promise.resolve());
 
@@ -88,6 +89,15 @@ export function App() {
     setOrderInput(String(selectedDay.finalParcelOrder ?? selectedDay.parcelRecommendation));
   }, [selectedDay?.id, selectedDay?.finalParcelOrder, selectedDay?.parcelRecommendation, selectedDay?.orderNeedsReconfirmation]);
 
+  useEffect(() => {
+    setStarted(window.localStorage.getItem("lunch-ledger-started") === "true");
+  }, []);
+
+  const startWorkspace = () => {
+    window.localStorage.setItem("lunch-ledger-started", "true");
+    setStarted(true);
+  };
+
   const submitPerson = async (event: FormEvent) => {
     event.preventDefault();
     const trimmed = name.trim();
@@ -108,6 +118,7 @@ export function App() {
       setBalances((current) => [...current, { personId: created.id, displayName: created.displayName, outstandingAmount: 0 }].sort((left, right) => left.displayName.localeCompare(right.displayName)));
       setName("");
       setNameError("");
+      nameInputRef.current?.focus();
       pushToast("success", "Person added.");
     } catch (failure) {
       setNameError(friendlyNameError((failure as Error).message));
@@ -200,7 +211,7 @@ export function App() {
 
   return <main>
     <ToastTray toasts={toasts} />
-    {!started && <LandingScreen onStart={() => setStarted(true)} />}
+    {!started && <LandingScreen onStart={startWorkspace} />}
     <div style={{ display: started ? undefined : "none" }}>
     <header><p className="eyebrow">Office lunch management</p><h1>Lunch Ledger</h1><p>Plan shared lunch, then hand the financial record to billing.</p></header>
     {error && <p className="error" role="alert">{error}</p>}
@@ -210,7 +221,7 @@ export function App() {
       <div>
         <h2>People</h2>
         <form onSubmit={submitPerson}>
-          <input data-testid="roster-name-input" value={name} onChange={(event) => { setName(event.target.value); setNameError(""); }} placeholder="Display name" />
+          <input ref={nameInputRef} data-testid="roster-name-input" value={name} onChange={(event) => { setName(event.target.value); setNameError(""); }} placeholder="Display name" />
           <button className="btn-primary" type="submit" data-testid="roster-add-button">Add</button>
         </form>
         {nameError && <p className="error" data-testid="roster-name-error" role="alert">{nameError}</p>}
@@ -265,9 +276,7 @@ export function App() {
         <div><p>Recommended parcels</p><strong>{selectedDay.parcelRecommendation}</strong></div>
       </div>
       <div className="groups">
-        {selectedDay.groups.map((group) => {
-          const groupParcels = Math.ceil(group.lunchBuyingCount / selectedDay.parcelCapacity);
-          return (
+        {selectedDay.groups.map((group) => (
           <article key={group.number}>
             <h3>Group {group.number}</h3>
             <div className="group-metrics">
@@ -280,13 +289,12 @@ export function App() {
                 <span>home food</span>
               </div>
               <div className="group-metric">
-                <strong>{groupParcels}</strong>
-                <span>{groupParcels === 1 ? "parcel" : "parcels"} ({group.lunchBuyingCount} didn't bring lunch)</span>
+                <strong>{group.lunchBuyingCount}</strong>
+                <span>didn't bring lunch</span>
               </div>
             </div>
           </article>
-          );
-        })}
+          ))}
       </div>
       <div className="order">
         <p>{selectedDay.finalParcelOrder === null ? "No final order yet." : `Final order: ${selectedDay.finalParcelOrder} parcels.`}</p>

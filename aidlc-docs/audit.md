@@ -408,6 +408,21 @@ The deployed Vercel app still requires a hosted persistent database. SQLite unde
 
 ---
 
+## Maintenance - Roster, Parcel, and Workspace Persistence Fixes
+
+**Timestamp**: 2026-09-18T10:43:04Z
+**User Input**: "Bugs/issues found: Add-person field doesn't clear/refocus reliably; ghost/duplicate person records; recommended parcels math is inconsistent; Start Workspace always shows on reload."
+**AI Response**: "Fixed all four issues:
+1. Added a name input ref so successful person creation clears and immediately refocuses the field, preventing raw type-after-click concatenation.
+2. Made person deletion idempotent at the repository layer: deleting an already-missing ID is treated as success, allowing stale UI rows to disappear instead of becoming orphaned. Existing-history records still archive as before.
+3. Removed misleading per-group parcel rounding from group cards. The parcel recommendation is a single global lunch-day order; group cards now show group headcount, home-food count, and people who did not bring lunch only.
+4. Persisted `started` in `localStorage` under `lunch-ledger-started`, so reloads return directly to the workspace after the user has started once.
+
+Added a workspace-persistence regression test. Verified with `npm run build` and `npm test`: 21 tests passing across 4 files."
+**Context**: "Post-completion maintenance; project remains COMPLETE"
+
+---
+
 ## Maintenance - Default People Per Parcel
 
 **Timestamp**: 2026-09-18T10:12:46Z

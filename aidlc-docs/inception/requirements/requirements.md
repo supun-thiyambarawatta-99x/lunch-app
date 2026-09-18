@@ -25,6 +25,8 @@ The first release is an internal web application for one office with fewer than 
 7. If the coordinator selects a date that already has a lunch record, the system displays a clear message (for example, "This date already exists.") next to the date field; the message clears automatically once the coordinator selects a different date.
 7a. If the coordinator enters a name that already belongs to an active person, the system displays an inline message ("This name already exists.") next to the name field instead of a raw database error; the message clears automatically once the coordinator edits the name. Blank or whitespace-only names are rejected inline without a server request.
 7b. People added to the roster after a lunch day was created must automatically appear in that lunch day's attendance list, defaulting to attending without home food.
+7c. After a person is added successfully, the name field must clear and receive focus so the next typed name starts in a fresh input.
+7d. Removing a person must be idempotent: if the UI has a stale person record that the server no longer has, the action still removes it from the visible list without leaving an orphaned row.
 
 ### Group Allocation
 
@@ -39,6 +41,7 @@ The first release is an internal web application for one office with fewer than 
 
 17. The coordinator can configure the number of people served by one lunch parcel.
 18. The system calculates the recommended parcel quantity by dividing the number of attendees without home food by the configured parcel capacity and rounding up to the next whole parcel.
+18a. Parcel recommendation is a single lunch-day order calculated from the total number of people who did not bring lunch; group cards must not independently round parcel quantities in a way that conflicts with the global order.
 19. The coordinator can enter the final ordered parcel quantity after reviewing the recommendation; the input starts pre-filled with the current recommendation, or the previously confirmed quantity, rather than left blank.
 20. The daily lunch record must retain both the recommendation and the coordinator-confirmed order quantity.
 

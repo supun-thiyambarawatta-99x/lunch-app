@@ -65,10 +65,7 @@ export class LunchRepository {
 
   removePerson(id: number): "deleted" | "archived" {
     try {
-      const result = database
-        .prepare("DELETE FROM people WHERE id = ?")
-        .run(id);
-      if (result.changes === 0) throw new Error("Person was not found.");
+      database.prepare("DELETE FROM people WHERE id = ?").run(id);
       return "deleted";
     } catch (error) {
       if (error instanceof Error && error.message.includes("FOREIGN KEY")) {
