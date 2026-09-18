@@ -32,7 +32,7 @@ The first release is an internal web application for one office with fewer than 
 9. When equal-sized groups are impossible because the attendee count is not evenly divisible, group sizes may differ by at most one person.
 10. The system automatically allocates attendees bringing food from home as evenly as possible between groups, with a difference of at most one such attendee between any two groups.
 11. Each group card displays its metrics in larger font values: total headcount, home-food count, and recommended parcels for the count of people who did not bring lunch.
-12. Group membership, group counts, and the recommended-parcel figure stay synchronized with the latest saved attendance and home-food changes without requiring a manual reload.
+12. Group membership, group counts, and the recommended-parcel figure stay synchronized with the latest saved attendance and home-food changes without requiring a manual reload; rapid successive checkbox changes must be serialized so no saved selection is overwritten by a stale request.
 13. Each group card displays its own recommended parcel count, calculated from that group's count of people who did not bring lunch and the configured parcel capacity, displayed immediately after that group's count.
 
 ### Parcel Planning and Order

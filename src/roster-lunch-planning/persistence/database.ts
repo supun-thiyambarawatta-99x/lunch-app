@@ -22,7 +22,7 @@ database.exec(`
   CREATE TABLE IF NOT EXISTS lunch_days (
     id INTEGER PRIMARY KEY,
     date TEXT NOT NULL UNIQUE,
-    parcel_capacity INTEGER NOT NULL DEFAULT 1,
+    parcel_capacity INTEGER NOT NULL DEFAULT 2,
     final_parcel_order INTEGER,
     order_needs_reconfirmation INTEGER NOT NULL DEFAULT 0
   );

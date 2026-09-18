@@ -83,7 +83,7 @@ export class LunchRepository {
     let lunchDayId: number;
     try {
       const result = database
-        .prepare("INSERT INTO lunch_days (date) VALUES (?)")
+        .prepare("INSERT INTO lunch_days (date, parcel_capacity) VALUES (?, 2)")
         .run(date);
       lunchDayId = Number(result.lastInsertRowid);
     } catch (error) {

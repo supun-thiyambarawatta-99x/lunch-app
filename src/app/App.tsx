@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import type { LunchDay, Person, PersonBalance } from "../roster-lunch-planning/domain/models";
 import { BillingPanel } from "../billing-history-balances/ui/BillingPanel";
 import { ToastTray } from "./ToastTray";
@@ -49,6 +49,10 @@ export function App() {
   const [orderInput, setOrderInput] = useState("");
   const [balances, setBalances] = useState<PersonBalance[]>([]);
   const { toasts, pushToast } = useToast();
+  const selectedDayRef = useRef<LunchDay | null>(null);
+  const attendanceSaveChain = useRef(Promise.resolve());
+
+  selectedDayRef.current = selectedDay;
 
   const refreshBalances = async () => {
     try {
@@ -146,24 +150,28 @@ export function App() {
   };
 
   const updateAttendanceEntry = async (personId: number, changes: { attending?: boolean; bringsHomeFood?: boolean }) => {
-    if (!selectedDay) return;
-    const lunchDayId = selectedDay.id;
-    let nextAttendance = selectedDay.attendance;
-    setSelectedDay((current) => {
-      if (!current || current.id !== lunchDayId) return current;
-      nextAttendance = current.attendance.map((entry) => {
-        if (entry.personId !== personId) return entry;
-        const attending = changes.attending ?? entry.attending;
-        return { ...entry, attending, bringsHomeFood: attending ? (changes.bringsHomeFood ?? entry.bringsHomeFood) : false };
-      });
-      return { ...current, attendance: nextAttendance };
+    const currentDay = selectedDayRef.current;
+    if (!currentDay) return;
+    const lunchDayId = currentDay.id;
+    const nextAttendance = currentDay.attendance.map((entry) => {
+      if (entry.personId !== personId) return entry;
+      const attending = changes.attending ?? entry.attending;
+      return { ...entry, attending, bringsHomeFood: attending ? (changes.bringsHomeFood ?? entry.bringsHomeFood) : false };
     });
-    try {
-      const day = await request<LunchDay>(`/api/lunch-days/${lunchDayId}/attendance`, { method: "PUT", body: JSON.stringify({ attendance: nextAttendance }) });
-      setSelectedDay((current) => (current && current.id === day.id ? day : current));
-    } catch (failure) {
-      pushToast("error", (failure as Error).message);
-    }
+    const optimisticDay = { ...currentDay, attendance: nextAttendance };
+    selectedDayRef.current = optimisticDay;
+    setSelectedDay(optimisticDay);
+
+    attendanceSaveChain.current = attendanceSaveChain.current
+      .then(async () => {
+        const day = await request<LunchDay>(`/api/lunch-days/${lunchDayId}/attendance`, { method: "PUT", body: JSON.stringify({ attendance: nextAttendance }) });
+        selectedDayRef.current = day;
+        setSelectedDay((current) => (current && current.id === day.id ? day : current));
+      })
+      .catch((failure) => {
+        pushToast("error", (failure as Error).message);
+      });
+    await attendanceSaveChain.current;
   };
 
   const updateCapacity = async (parcelCapacity: number) => {

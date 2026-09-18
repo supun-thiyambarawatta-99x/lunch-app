@@ -408,6 +408,24 @@ The deployed Vercel app still requires a hosted persistent database. SQLite unde
 
 ---
 
+## Maintenance - Default People Per Parcel
+
+**Timestamp**: 2026-09-18T10:12:46Z
+**User Input**: "change the default for People per parcel for 2"
+**AI Response**: "Changed the default parcel capacity from one to two for new lunch days in both the SQLite schema and the explicit lunch-day insert path. Existing lunch days retain their saved capacity so historical plans are not silently changed. Build passes and 20 tests pass."
+**Context**: "Post-completion maintenance; project remains COMPLETE"
+
+---
+
+## Maintenance - Attendance and Home-Food Checkbox Race Fix
+
+**Timestamp**: 2026-09-18T10:10:20Z
+**User Input**: "home food and attending checkboxes are not working correctly. sometime even I click its removing the tick automatically. some cannot tick"
+**AI Response**: "Fixed the race condition in `App.tsx`. The previous handler built the API payload from a stale React state closure before the state updater executed, so rapid checkbox clicks could send an older attendance snapshot and overwrite a newer selection. The new handler maintains a selected-lunch-day ref for immediate current state, applies optimistic updates immediately, and serializes attendance requests through a promise chain per active page. Attending and home-food changes now remain checked after rapid successive interactions. Verified with `npm run build` and `npm test`: 20 tests passing across 4 files."
+**Context**: "Post-completion maintenance; project remains COMPLETE"
+
+---
+
 ## Maintenance - Hosted Bootstrap API Error
 
 **Timestamp**: 2026-09-18T10:02:00Z
