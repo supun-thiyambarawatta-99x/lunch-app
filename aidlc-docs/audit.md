@@ -391,6 +391,32 @@ Updated `requirements.md`: added trash-icon wording to the removal requirements,
 
 ---
 
+## Maintenance - Hosted Performance and Dashboard Loading
+
+**Timestamp**: 2026-09-18T04:25:05Z
+**User Input**: "do above improvements"
+
+**AI Response**: "Implemented the immediate hosted-performance improvements:
+1. Added `GET /api/bootstrap`, returning people, lunch days, and balances in one serverless invocation instead of three independent requests.
+2. Deferred dashboard loading until the user clicks Start, so the landing screen no longer pays the dashboard startup cost before it is needed.
+3. After creating a person or lunch day, update local React state directly from the mutation response instead of refetching the complete dashboard.
+4. After removing a person or lunch day, remove the item from local state immediately.
+5. Added regression coverage for the deferred bootstrap request; build passes and 20 tests pass.
+
+The deployed Vercel app still requires a hosted persistent database. SQLite under Vercel `/tmp` is ephemeral and instance-local, so this optimization does not solve cross-instance persistence. Added explicit requirements for the external database prerequisite."
+**Context**: "Post-completion performance maintenance; project remains COMPLETE"
+
+---
+
+## Maintenance - Hosted Bootstrap API Error
+
+**Timestamp**: 2026-09-18T10:02:00Z
+**User Input**: "Unexpected token '<', \"<!DOCTYPE ...\" is not valid JSON error can see in the page"
+**AI Response**: "Confirmed deployed `/api/bootstrap` returned a 404 HTML document because Vercel was running an older deployment that did not contain the new bootstrap route. The current source now includes `/api/bootstrap`; the local endpoint returns JSON 200. Added defensive client parsing so HTML/proxy responses produce a readable status error rather than `Unexpected token '<'`. Build passes and 20 tests pass. The latest lunch-app commit must be pushed and redeployed to update the hosted URL."
+**Context**: "Post-completion deployment maintenance; project remains COMPLETE"
+
+---
+
 ## Maintenance - Roster Validation and Missing-Attendee Bug Fixes
 
 **Timestamp**: 2026-09-08T12:40:00Z

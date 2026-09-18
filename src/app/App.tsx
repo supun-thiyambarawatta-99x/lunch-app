@@ -9,9 +9,21 @@ import "./landing.css";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error ?? "Request failed.");
-  return result;
+  const contentType = response.headers?.get?.("content-type") ?? "application/json";
+  const body = typeof response.text === "function"
+    ? await response.text()
+    : JSON.stringify(await response.json());
+  let result: { error?: string } & T;
+  try {
+    result = contentType.includes("application/json") ? JSON.parse(body) : ({} as { error?: string } & T);
+  } catch {
+    throw new Error(`API returned invalid JSON (${response.status}).`);
+  }
+  if (!response.ok) throw new Error(result.error ?? `Request failed (${response.status}).`);
+  if (!contentType.includes("application/json")) {
+    throw new Error(`API returned an unexpected response (${response.status}).`);
+  }
+  return result as T;
 }
 
 const friendlyDateError = (message: string) =>
@@ -48,18 +60,24 @@ export function App() {
 
   const refreshLists = async () => {
     try {
-      const [nextPeople, nextDays] = await Promise.all([request<Person[]>("/api/people"), request<LunchDay[]>("/api/lunch-days")]);
-      setPeople(nextPeople);
-      setLunchDays(nextDays);
-      setSelectedDay((current) => (current && !nextDays.some((day) => day.id === current.id) ? null : current));
-      await refreshBalances();
+      const dashboard = await request<{
+        people: Person[];
+        lunchDays: LunchDay[];
+        balances: PersonBalance[];
+      }>("/api/bootstrap");
+      setPeople(dashboard.people);
+      setLunchDays(dashboard.lunchDays);
+      setBalances(dashboard.balances);
+      setSelectedDay((current) => (current && !dashboard.lunchDays.some((day) => day.id === current.id) ? null : current));
     } catch (failure) {
       const message = failure instanceof Error ? failure.message : "Unable to load lunch data.";
       setError(message);
       pushToast("error", message);
     }
   };
-  useEffect(() => { void refreshLists(); }, []);
+  useEffect(() => {
+    if (started) void refreshLists();
+  }, [started]);
 
   useEffect(() => {
     if (!selectedDay) { setOrderInput(""); return; }
@@ -81,11 +99,12 @@ export function App() {
       return;
     }
     try {
-      await request("/api/people", { method: "POST", body: JSON.stringify({ displayName: trimmed }) });
+      const created = await request<Person>("/api/people", { method: "POST", body: JSON.stringify({ displayName: trimmed }) });
+      setPeople((current) => [...current, created].sort((left, right) => left.displayName.localeCompare(right.displayName)));
+      setBalances((current) => [...current, { personId: created.id, displayName: created.displayName, outstandingAmount: 0 }].sort((left, right) => left.displayName.localeCompare(right.displayName)));
       setName("");
       setNameError("");
       pushToast("success", "Person added.");
-      await refreshLists();
     } catch (failure) {
       setNameError(friendlyNameError((failure as Error).message));
     }
@@ -95,7 +114,8 @@ export function App() {
     try {
       const result = await request<{ status: "deleted" | "archived" }>(`/api/people/${personId}`, { method: "DELETE" });
       pushToast("success", result.status === "deleted" ? "Person removed." : "Person archived because they have existing lunch records.");
-      await refreshLists();
+      setPeople((current) => current.filter((person) => person.id !== personId));
+      setBalances((current) => current.filter((balance) => balance.personId !== personId));
     } catch (failure) {
       pushToast("error", (failure as Error).message);
     }
@@ -107,8 +127,8 @@ export function App() {
       const day = await request<LunchDay>("/api/lunch-days", { method: "POST", body: JSON.stringify({ date }) });
       setSelectedDay(day);
       setDateError("");
+      setLunchDays((current) => [day, ...current.filter((existing) => existing.id !== day.id)]);
       pushToast("success", `Lunch day ${day.date} created.`);
-      await refreshLists();
     } catch (failure) {
       setDateError(friendlyDateError((failure as Error).message));
     }
@@ -118,7 +138,8 @@ export function App() {
     try {
       await request(`/api/lunch-days/${lunchDayId}`, { method: "DELETE" });
       pushToast("success", "Lunch day removed.");
-      await refreshLists();
+      setLunchDays((current) => current.filter((day) => day.id !== lunchDayId));
+      setSelectedDay((current) => (current?.id === lunchDayId ? null : current));
     } catch (failure) {
       pushToast("error", (failure as Error).message);
     }

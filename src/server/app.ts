@@ -28,6 +28,17 @@ const handle = (action: () => unknown, response: express.Response) => {
   }
 };
 
+app.get("/api/bootstrap", (_request, response) =>
+  handle(
+    () => ({
+      people: rosterService.listPeople(),
+      lunchDays: lunchDayService.listLunchDays(),
+      balances: billingService.listBalances(),
+    }),
+    response,
+  ),
+);
+
 app.get("/api/people", (_request, response) =>
   handle(() => rosterService.listPeople(), response),
 );

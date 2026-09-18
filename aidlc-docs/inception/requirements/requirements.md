@@ -85,6 +85,9 @@ For 14 attendees split into two groups, with four people bringing food from home
 6. The initial deployment may be local or a simple internal deployment and needs to support fewer than 50 people in one office.
 7. The initial release does not include employee authentication, employee self-service, online payment collection, financial exports, monthly summaries, managed-cloud deployment, or multi-office support.
 8. Before showing the main coordinator workspace, the system must present a soft-colored landing screen featuring a charming 3D cartoon chef accountant character working at a desk with floating food and grocery items, and a prominent "Start Workspace" action that reveals the main application without a page reload.
+9. The coordinator workspace must load people, lunch days, and outstanding balances through one dashboard request rather than separate initial requests.
+10. After a successful person or lunch-day mutation, the interface must update its local state from the mutation response without refetching the complete dashboard.
+11. Hosted deployments must use a persistent external database; Vercel `/tmp` storage is development-only and must not be treated as durable production storage.
 
 ## Extension Compliance
 

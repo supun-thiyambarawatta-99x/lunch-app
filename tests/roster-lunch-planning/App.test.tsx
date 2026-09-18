@@ -5,13 +5,21 @@ import { App } from "../../src/app/App";
 describe("App", () => {
   afterEach(cleanup);
 
+  const startApp = async () => {
+    fireEvent.click(screen.getByTestId("landing-start-button"));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/bootstrap", expect.any(Object)));
+  };
+
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => [] }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ people: [], lunchDays: [], balances: [] }),
+    }));
   });
 
   it("renders coordinator controls with stable automation identifiers", async () => {
     render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    await startApp();
     expect(screen.getByTestId("roster-name-input")).toBeInTheDocument();
     expect(screen.getByTestId("roster-add-button")).toBeInTheDocument();
     expect(screen.getByTestId("lunch-day-date-input")).toBeInTheDocument();
@@ -20,7 +28,7 @@ describe("App", () => {
 
   it("submits a new roster person", async () => {
     render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    await startApp();
     fireEvent.change(screen.getByTestId("roster-name-input"), { target: { value: "Asha" } });
     fireEvent.click(screen.getByTestId("roster-add-button"));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/people", expect.objectContaining({ method: "POST" })));
@@ -33,11 +41,14 @@ describe("App", () => {
         Promise.resolve({
           ok: true,
           json: async () =>
-            path === "/api/people" ? [{ id: 1, displayName: "Asha", archived: false }] : [],
+            path === "/api/bootstrap"
+              ? { people: [{ id: 1, displayName: "Asha", archived: false }], lunchDays: [], balances: [] }
+              : [],
         }),
       ),
     );
     render(<App />);
+    await startApp();
     await waitFor(() => expect(screen.getByText("Asha")).toBeInTheDocument());
 
     fireEvent.change(screen.getByTestId("roster-name-input"), { target: { value: "asha" } });
@@ -52,7 +63,7 @@ describe("App", () => {
 
   it("blocks submitting a blank name", async () => {
     render(<App />);
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    await startApp();
     const callsBefore = (fetch as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
     fireEvent.change(screen.getByTestId("roster-name-input"), { target: { value: "   " } });
     fireEvent.click(screen.getByTestId("roster-add-button"));
