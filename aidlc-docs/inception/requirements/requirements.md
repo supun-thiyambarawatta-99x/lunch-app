@@ -59,7 +59,8 @@ The first release is an internal web application for one office with fewer than 
 27. A paid charge must no longer contribute to the person's outstanding balance.
 28. The system must list people with paid, unpaid, and outstanding payment status, including their current outstanding balance.
 29. The system must allow the coordinator to correct an incorrectly recorded payment status while preserving the resulting current balance.
-30. The coordinator can see every person's current outstanding balance in a persistent side panel, visible regardless of which lunch day is selected, presented in an unbordered table of name and balance.
+30. The coordinator can see every person's current outstanding balance in a persistent side panel, visible regardless of which lunch day is selected, presented in an unbordered table of name, accumulated balance, and number of unpaid lunch days.
+30a. The outstanding balance must accumulate unpaid charges across all lunch days until each charge is settled; the interface must make multi-day debt explicit, for example, "owes for 2 days." 
 
 ### History
 

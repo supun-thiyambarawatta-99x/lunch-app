@@ -80,7 +80,9 @@ export class BillingRepository {
   listBalances(): PersonBalance[] {
     return database
       .prepare(
-        `SELECT p.id AS person_id, p.display_name, COALESCE(SUM(CASE WHEN c.paid = 0 THEN c.amount ELSE 0 END), 0) AS outstanding_amount
+        `SELECT p.id AS person_id, p.display_name,
+          COALESCE(SUM(CASE WHEN c.paid = 0 THEN c.amount ELSE 0 END), 0) AS outstanding_amount,
+          COUNT(DISTINCT CASE WHEN c.paid = 0 THEN c.lunch_day_id END) AS outstanding_days
          FROM people p LEFT JOIN charges c ON c.person_id = p.id
          GROUP BY p.id, p.display_name
          HAVING p.archived = 0 OR outstanding_amount > 0
@@ -91,6 +93,7 @@ export class BillingRepository {
         personId: row.person_id,
         displayName: row.display_name,
         outstandingAmount: row.outstanding_amount,
+        outstandingDays: row.outstanding_days,
       }));
   }
 }

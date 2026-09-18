@@ -115,7 +115,7 @@ export function App() {
     try {
       const created = await request<Person>("/api/people", { method: "POST", body: JSON.stringify({ displayName: trimmed }) });
       setPeople((current) => [...current, created].sort((left, right) => left.displayName.localeCompare(right.displayName)));
-      setBalances((current) => [...current, { personId: created.id, displayName: created.displayName, outstandingAmount: 0 }].sort((left, right) => left.displayName.localeCompare(right.displayName)));
+      setBalances((current) => [...current, { personId: created.id, displayName: created.displayName, outstandingAmount: 0, outstandingDays: 0 }].sort((left, right) => left.displayName.localeCompare(right.displayName)));
       setName("");
       setNameError("");
       nameInputRef.current?.focus();
@@ -313,7 +313,10 @@ export function App() {
             {balances.map((balance) => (
               <tr key={balance.personId}>
                 <td>{balance.displayName}</td>
-                <td>Rs. {(balance.outstandingAmount / 100).toFixed(2)}</td>
+                <td>
+                  <strong>Rs. {(balance.outstandingAmount / 100).toFixed(2)}</strong>
+                  <small>{balance.outstandingDays === 0 ? "settled" : `owes for ${balance.outstandingDays} ${balance.outstandingDays === 1 ? "day" : "days"}`}</small>
+                </td>
               </tr>
             ))}
           </tbody>

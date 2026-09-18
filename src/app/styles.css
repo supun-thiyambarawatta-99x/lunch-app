@@ -26,6 +26,7 @@ main { max-width: 1100px; margin: auto; padding: 3rem 1.25rem 5rem; } header { m
 .borderless-table { width: 100%; border-collapse: collapse; }
 .borderless-table td, .borderless-table th { border: none; padding: .4rem .3rem; text-align: left; vertical-align: middle; font-size: .85rem; }
 .borderless-table td:last-child, .borderless-table th:last-child { text-align: right; }
+.balances-panel td:last-child small { display: block; margin-top: .15rem; color: #a54520; font-size: .68rem; }
 .group-metrics { display: flex; flex-direction: column; gap: .4rem; margin-top: .5rem; }
 .group-metric { display: flex; align-items: baseline; gap: .4rem; }
 .group-metric strong { font-size: 1.5rem; color: #1d6245; font-family: "Fraunces", serif; line-height: 1; }

@@ -408,6 +408,15 @@ The deployed Vercel app still requires a hosted persistent database. SQLite unde
 
 ---
 
+## Maintenance - Running Balance Across Lunch Days
+
+**Timestamp**: 2026-09-18T10:49:33Z
+**User Input**: "Running balance across days, not just today's snapshot. Outstanding balances should accumulate across lunch days until settled, so he can see 'Bob owes for two days' instead of having to remember and manually track unpaid days himself."
+**AI Response**: "The backend already aggregated unpaid charges across all lunch days, but the UI displayed only the total amount. Extended `PersonBalance` and the aggregate SQL query with `outstandingDays`, counting distinct unpaid lunch days while excluding paid charges. The outstanding-balances panel now shows both the accumulated rupee balance and explicit text such as 'owes for 2 days' or 'settled'. Updated requirements.md and verified with build plus 21 passing tests."
+**Context**: "Post-completion maintenance; project remains COMPLETE"
+
+---
+
 ## Maintenance - Roster, Parcel, and Workspace Persistence Fixes
 
 **Timestamp**: 2026-09-18T10:43:04Z

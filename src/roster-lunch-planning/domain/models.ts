@@ -44,4 +44,5 @@ export type PersonBalance = {
   personId: number;
   displayName: string;
   outstandingAmount: number;
+  outstandingDays: number;
 };
