@@ -26,7 +26,7 @@
 
 ## Group Allocation Algorithm
 
-For $n$ attendees, use $g = \lceil n/7\rceil$ groups. Allocate home-food attendees first by repeatedly assigning the next person to a group with the fewest home-food attendees and available capacity. Allocate the remaining attendees by repeatedly assigning the next person to the smallest group with capacity. Deterministic tie-breaking uses ascending group number. The result guarantees group capacity at most seven, group-size difference at most one, and home-food-count difference at most one.
+For $n$ attendees, use $g = \lceil n/8\rceil$ groups. Allocate home-food attendees first by repeatedly assigning the next person to a group with the fewest home-food attendees and available capacity. Allocate the remaining attendees by repeatedly assigning the next person to the smallest group with capacity. Deterministic tie-breaking uses ascending group number. The result guarantees group capacity at most eight, group-size difference at most one, and home-food-count difference at most one.
 
 ## Parcel Recommendation Algorithm
 

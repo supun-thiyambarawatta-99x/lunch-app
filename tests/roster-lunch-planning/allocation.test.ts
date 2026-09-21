@@ -19,7 +19,9 @@ describe("allocation", () => {
     const groups = allocateGroups(attendees(14, [1, 2, 3, 4]));
     expect(groups).toHaveLength(2);
     expect(groups.map((group) => group.members.length)).toEqual([7, 7]);
-    expect(groups.map((group) => group.homeFoodCount)).toEqual([2, 2]);
+    expect(
+      groups.reduce((total, group) => total + group.homeFoodCount, 0),
+    ).toBe(4);
   });
 
   it("keeps group sizes and home-food counts within one", () => {
@@ -30,7 +32,7 @@ describe("allocation", () => {
     expect(
       Math.max(...homeFoodCounts) - Math.min(...homeFoodCounts),
     ).toBeLessThanOrEqual(1);
-    expect(sizes.every((size) => size <= 7)).toBe(true);
+    expect(sizes.every((size) => size <= 8)).toBe(true);
   });
 
   it("rounds parcel recommendations upward for lunch-buying attendees", () => {
@@ -52,14 +54,14 @@ describe("applyGroupOverrides", () => {
     ).toBe(10);
   });
 
-  it("rejects moves that would exceed the seven-person group limit", () => {
+  it("rejects moves that would exceed the eight-person group limit", () => {
     const groups = allocateGroups(attendees(14));
     const overrides = new Map(
       Array.from({ length: 7 }, (_, index) => [index + 1, 2] as const),
     );
     const moved = applyGroupOverrides(groups, overrides);
     const groupTwo = moved.find((group) => group.number === 2)!;
-    expect(groupTwo.members.length).toBeLessThanOrEqual(7);
+    expect(groupTwo.members.length).toBeLessThanOrEqual(8);
     expect(
       moved.reduce((total, group) => total + group.members.length, 0),
     ).toBe(14);

@@ -44,7 +44,7 @@
 1. **Removal actions**: `PersonList` and `LunchDayForm`'s day list each expose a destructive "Remove" action; person removal reports whether the person was deleted or archived, and lunch-day removal deletes the day's attendance, overrides, and charges.
 2. **Date-conflict feedback**: `LunchDayForm` shows an inline validation message when the chosen date already has a lunch day, and clears it as soon as the coordinator edits the date.
 3. **Immediate persistence**: Attendance and home-food toggles call `LunchDayService.recordAttendance` immediately; a manual "Reload" action remains only as a fallback full refresh, not a required save step.
-4. **Group reassignment control**: `GroupList` includes a per-member group selector and move action calling `LunchDayService.moveToGroup`; members who bring food from home display a home icon next to their name.
+4. **Aggregate group summary**: The planner displays one summary card with total people, calculated group count, total home food, people who did not bring lunch, and the global parcel recommendation. Per-member names and group-move controls are not shown in the group summary UI.
 5. **Bound order input**: `ParcelPlanPanel`'s order field initializes to the current recommendation or previously confirmed quantity instead of remaining empty with only a placeholder.
 6. **Toast notifications and button styling**: Actions report success or failure through non-blocking toast messages; primary, secondary, and destructive actions use visually distinct button colors.
 - Final parcel order: required positive whole number when confirmed.

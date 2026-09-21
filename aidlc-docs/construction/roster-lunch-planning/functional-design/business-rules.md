@@ -15,8 +15,8 @@
 
 ## Group Rules
 
-1. A group can contain at most seven attendees.
-2. For $n > 0$ attendees, the system automatically uses $\lceil n/7\rceil$ groups. For zero attendees, it creates no groups.
+1. A group can contain at most eight attendees.
+2. For $n > 0$ attendees, the system automatically uses $\lceil n/8\rceil$ groups. For zero attendees, it creates no groups.
 3. Group sizes differ by at most one attendee.
 4. Home-food attendee counts differ by at most one between groups whenever groups exist.
 5. Every attendee is assigned exactly once; absent people are assigned zero times.

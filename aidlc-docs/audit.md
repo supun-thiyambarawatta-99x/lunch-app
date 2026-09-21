@@ -408,6 +408,15 @@ The deployed Vercel app still requires a hosted persistent database. SQLite unde
 
 ---
 
+## Maintenance - Aggregate Group Summary Requirement
+
+**Timestamp**: 2026-09-18T11:29:11Z
+**User Input**: "Requirement changes: remove creating groups in the UI. keep one box and add the details inside that. if there are more than 8 people. mention inside the group as Total people : 10, Groups: 2, total home food 3. So home for also sufficient for 2 people. so 3 home food cover total 6 people. and remaining is 4. so food parcel is sufficient for 2, they need only 2 parcels from out side. include changes as above"
+**AI Response**: "Implemented the aggregate planner summary. The UI no longer renders per-group cards, member names, or move controls. It now shows one `group-summary-card` with Total people, Groups, Total home food, People who didn't bring lunch, and Parcels needed. Group capacity is now eight attendees, and global parcel calculation remains the single order calculation. Updated allocation tests, requirements, business rules, business logic, and frontend design documentation. Build passes and 21 tests pass."
+**Context**: "Post-completion maintenance; project remains COMPLETE"
+
+---
+
 ## Maintenance - Running Balance Across Lunch Days
 
 **Timestamp**: 2026-09-18T10:49:33Z

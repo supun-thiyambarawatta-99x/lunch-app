@@ -1,6 +1,6 @@
 import type { Attendance, Group } from "./models.js";
 
-const MAX_GROUP_SIZE = 7;
+const MAX_GROUP_SIZE = 8;
 
 const byNameThenId = (left: Attendance, right: Attendance) =>
   left.displayName.localeCompare(right.displayName) ||

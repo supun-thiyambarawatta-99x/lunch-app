@@ -31,4 +31,10 @@ main { max-width: 1100px; margin: auto; padding: 3rem 1.25rem 5rem; } header { m
 .group-metric { display: flex; align-items: baseline; gap: .4rem; }
 .group-metric strong { font-size: 1.5rem; color: #1d6245; font-family: "Fraunces", serif; line-height: 1; }
 .group-metric span { font-size: .8rem; color: #3d5248; }
+.group-summary-card { background: #e8f3e8; border: 1px solid #bfd0c3; border-radius: 8px; padding: 1rem 1.2rem; margin-top: 1rem; }
+.group-summary-card h3 { margin: 0; }
+.group-summary-card .group-metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; }
+.group-summary-card .group-metric { display: grid; gap: .3rem; }
+.group-summary-card .group-metric strong { font-size: 1.8rem; }
+@media (max-width: 800px) { .group-summary-card .group-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .balances-panel { position: static; } }

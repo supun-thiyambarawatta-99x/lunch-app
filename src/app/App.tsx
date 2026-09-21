@@ -275,26 +275,30 @@ export function App() {
         <div><label>People per parcel<input data-testid="parcel-capacity-input" type="number" min="1" value={selectedDay.parcelCapacity} onChange={(event) => void updateCapacity(Number(event.target.value))} /></label></div>
         <div><p>Recommended parcels</p><strong>{selectedDay.parcelRecommendation}</strong></div>
       </div>
-      <div className="groups">
-        {selectedDay.groups.map((group) => (
-          <article key={group.number}>
-            <h3>Group {group.number}</h3>
-            <div className="group-metrics">
-              <div className="group-metric">
-                <strong>{group.members.length}</strong>
-                <span>people</span>
-              </div>
-              <div className="group-metric">
-                <strong>{group.homeFoodCount}</strong>
-                <span>home food</span>
-              </div>
-              <div className="group-metric">
-                <strong>{group.lunchBuyingCount}</strong>
-                <span>didn't bring lunch</span>
-              </div>
-            </div>
-          </article>
-          ))}
+      <div className="group-summary-card" data-testid="group-summary-card">
+        <h3>Lunch coverage</h3>
+        <div className="group-metrics">
+          <div className="group-metric">
+            <strong>{selectedDay.attendance.filter((entry) => entry.attending).length}</strong>
+            <span>Total people</span>
+          </div>
+          <div className="group-metric">
+            <strong>{selectedDay.groups.length}</strong>
+            <span>Groups</span>
+          </div>
+          <div className="group-metric">
+            <strong>{selectedDay.attendance.filter((entry) => entry.attending && entry.bringsHomeFood).length}</strong>
+            <span>Total home food</span>
+          </div>
+          <div className="group-metric">
+            <strong>{selectedDay.attendance.filter((entry) => entry.attending && !entry.bringsHomeFood).length}</strong>
+            <span>People who didn't bring lunch</span>
+          </div>
+          <div className="group-metric">
+            <strong>{selectedDay.parcelRecommendation}</strong>
+            <span>Parcels needed</span>
+          </div>
+        </div>
       </div>
       <div className="order">
         <p>{selectedDay.finalParcelOrder === null ? "No final order yet." : `Final order: ${selectedDay.finalParcelOrder} parcels.`}</p>
