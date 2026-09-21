@@ -290,10 +290,7 @@ export function App() {
             <strong>{selectedDay.attendance.filter((entry) => entry.attending && entry.bringsHomeFood).length}</strong>
             <span>Total home food</span>
           </div>
-          <div className="group-metric">
-            <strong>{selectedDay.attendance.filter((entry) => entry.attending && !entry.bringsHomeFood).length}</strong>
-            <span>People who didn't bring lunch</span>
-          </div>
+          
           <div className="group-metric">
             <strong>{selectedDay.parcelRecommendation}</strong>
             <span>Parcels needed</span>
