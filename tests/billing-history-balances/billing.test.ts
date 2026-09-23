@@ -32,37 +32,37 @@ describe("splitCost", () => {
 
 describe("BillingService", () => {
   const lunchDayService = {
-    getLunchDay: () => ({
+    getLunchDay: async () => ({
       id: 4,
       finalParcelOrder: 2,
       orderNeedsReconfirmation: false,
     }),
-    getEligibleAttendees: () => [{ personId: 1, displayName: "Asha" }],
+    getEligibleAttendees: async () => [{ personId: 1, displayName: "Asha" }],
   };
 
-  it("blocks allocation after any charge was paid", () => {
+  it("blocks allocation after any charge was paid", async () => {
     const service = new BillingService(
-      { hasPaidCharges: () => true } as never,
+      { hasPaidCharges: async () => true } as never,
       lunchDayService as never,
     );
-    expect(() => service.allocateCharges(4, 100)).toThrow(
+    await expect(service.allocateCharges(4, 100)).rejects.toThrow(
       "cannot change after a payment",
     );
   });
 
-  it("blocks allocation when the final order is unconfirmed", () => {
+  it("blocks allocation when the final order is unconfirmed", async () => {
     const service = new BillingService(
-      { hasPaidCharges: () => false } as never,
+      { hasPaidCharges: async () => false } as never,
       {
         ...lunchDayService,
-        getLunchDay: () => ({
+        getLunchDay: async () => ({
           id: 4,
           finalParcelOrder: null,
           orderNeedsReconfirmation: false,
         }),
       } as never,
     );
-    expect(() => service.allocateCharges(4, 100)).toThrow(
+    await expect(service.allocateCharges(4, 100)).rejects.toThrow(
       "Confirm the final parcel order",
     );
   });

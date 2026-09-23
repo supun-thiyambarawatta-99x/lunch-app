@@ -25,26 +25,29 @@ const lunchDay: LunchDay = {
 };
 
 describe("LunchDayService", () => {
-  it("marks a confirmed order for reconfirmation after attendance changes", () => {
+  it("marks a confirmed order for reconfirmation after attendance changes", async () => {
     const repository = {
-      updateAttendance: (_id: number, entries: LunchDay["attendance"]) => {
+      updateAttendance: async (
+        _id: number,
+        entries: LunchDay["attendance"],
+      ) => {
         lunchDay.attendance = entries;
         lunchDay.orderNeedsReconfirmation = true;
       },
-      getLunchDay: () => lunchDay,
+      getLunchDay: async () => lunchDay,
     };
     const service = new LunchDayService(repository as never);
-    const result = service.recordAttendance(1, [
+    const result = await service.recordAttendance(1, [
       { ...lunchDay.attendance[0], attending: false },
       lunchDay.attendance[1],
     ]);
     expect(result.orderNeedsReconfirmation).toBe(true);
-    expect(() => service.getEligibleAttendees(1)).toThrow(
+    await expect(service.getEligibleAttendees(1)).rejects.toThrow(
       "requires order reconfirmation",
     );
   });
 
-  it("returns only attending people who do not bring home food", () => {
+  it("returns only attending people who do not bring home food", async () => {
     lunchDay.orderNeedsReconfirmation = false;
     lunchDay.attendance = [
       {
@@ -67,37 +70,39 @@ describe("LunchDayService", () => {
       },
     ];
     const service = new LunchDayService({
-      getLunchDay: () => lunchDay,
+      getLunchDay: async () => lunchDay,
     } as never);
-    expect(service.getEligibleAttendees(1)).toEqual([
+    await expect(service.getEligibleAttendees(1)).resolves.toEqual([
       { personId: 1, displayName: "Asha" },
     ]);
   });
 
-  it("deletes a lunch day through the repository", () => {
+  it("deletes a lunch day through the repository", async () => {
     let deletedId: number | undefined;
     const service = new LunchDayService({
-      deleteLunchDay: (id: number) => {
+      deleteLunchDay: async (id: number) => {
         deletedId = id;
       },
     } as never);
-    service.deleteLunchDay(7);
+    await service.deleteLunchDay(7);
     expect(deletedId).toBe(7);
   });
 
-  it("rejects moving a person to a group number outside the lunch day's groups", () => {
+  it("rejects moving a person to a group number outside the lunch day's groups", async () => {
     const service = new LunchDayService({
-      getLunchDay: () => ({
+      getLunchDay: async () => ({
         ...lunchDay,
         groups: [{ number: 1 }, { number: 2 }],
       }),
     } as never);
-    expect(() => service.moveToGroup(1, 1, 5)).toThrow("Select a valid group");
+    await expect(service.moveToGroup(1, 1, 5)).rejects.toThrow(
+      "Select a valid group",
+    );
   });
 
-  it("rejects moving a person who is not attending", () => {
+  it("rejects moving a person who is not attending", async () => {
     const service = new LunchDayService({
-      getLunchDay: () => ({
+      getLunchDay: async () => ({
         ...lunchDay,
         attendance: [
           {
@@ -110,14 +115,16 @@ describe("LunchDayService", () => {
         groups: [{ number: 1 }, { number: 2 }],
       }),
     } as never);
-    expect(() => service.moveToGroup(1, 9, 2)).toThrow("Only attending people");
+    await expect(service.moveToGroup(1, 9, 2)).rejects.toThrow(
+      "Only attending people",
+    );
   });
 
-  it("persists a valid group override and returns the refreshed lunch day", () => {
+  it("persists a valid group override and returns the refreshed lunch day", async () => {
     let overridePersonId: number | undefined;
     let overrideGroupNumber: number | undefined;
     const service = new LunchDayService({
-      getLunchDay: () => ({
+      getLunchDay: async () => ({
         ...lunchDay,
         attendance: [
           {
@@ -129,7 +136,7 @@ describe("LunchDayService", () => {
         ],
         groups: [{ number: 1 }, { number: 2 }],
       }),
-      setGroupOverride: (
+      setGroupOverride: async (
         _id: number,
         personId: number,
         groupNumber: number,
@@ -138,7 +145,7 @@ describe("LunchDayService", () => {
         overrideGroupNumber = groupNumber;
       },
     } as never);
-    const result = service.moveToGroup(1, 1, 2);
+    const result = await service.moveToGroup(1, 1, 2);
     expect(overridePersonId).toBe(1);
     expect(overrideGroupNumber).toBe(2);
     expect(result.groups).toHaveLength(2);
@@ -146,11 +153,11 @@ describe("LunchDayService", () => {
 });
 
 describe("RosterService", () => {
-  it("delegates person removal to the repository and returns its status", () => {
+  it("delegates person removal to the repository and returns its status", async () => {
     const service = new RosterService({
-      removePerson: (id: number) => (id === 1 ? "deleted" : "archived"),
+      removePerson: async (id: number) => (id === 1 ? "deleted" : "archived"),
     } as never);
-    expect(service.removePerson(1)).toBe("deleted");
-    expect(service.removePerson(2)).toBe("archived");
+    await expect(service.removePerson(1)).resolves.toBe("deleted");
+    await expect(service.removePerson(2)).resolves.toBe("archived");
   });
 });

@@ -1,4 +1,4 @@
-import { database } from "./database.js";
+import { database, databaseReady } from "./database.js";
 import type { Attendance, LunchDay, Person } from "../domain/models.js";
 import {
   allocateGroups,
@@ -6,229 +6,232 @@ import {
   recommendParcels,
 } from "../domain/allocation.js";
 
-type PersonRow = { id: number; display_name: string; archived: number };
+type PersonRow = {
+  id: number | string;
+  display_name: string;
+  archived: number;
+};
 type LunchDayRow = {
-  id: number;
+  id: number | string;
   date: string;
   parcel_capacity: number;
   final_parcel_order: number | null;
   order_needs_reconfirmation: number;
 };
 type AttendanceRow = {
-  person_id: number;
+  person_id: number | string;
   display_name: string;
   attending: number;
   brings_home_food: number;
 };
-
+const toId = (value: number | string) => Number(value);
 const toPerson = (row: PersonRow): Person => ({
-  id: row.id,
+  id: toId(row.id),
   displayName: row.display_name,
   archived: Boolean(row.archived),
 });
 
 export class LunchRepository {
-  listPeople(): Person[] {
+  async listPeople(): Promise<Person[]> {
+    await databaseReady;
     return (
-      database
-        .prepare(
-          "SELECT id, display_name, archived FROM people ORDER BY archived, display_name",
-        )
-        .all() as PersonRow[]
+      await database.query<PersonRow>(
+        "SELECT id, display_name, archived FROM people ORDER BY archived, display_name",
+      )
     ).map(toPerson);
   }
 
-  createPerson(displayName: string): Person {
+  async createPerson(displayName: string): Promise<Person> {
+    await databaseReady;
     try {
-      const result = database
-        .prepare("INSERT INTO people (display_name) VALUES (?)")
-        .run(displayName);
-      return {
-        id: Number(result.lastInsertRowid),
+      await database.execute("INSERT INTO people (display_name) VALUES ($1)", [
         displayName,
-        archived: false,
-      };
+      ]);
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("UNIQUE constraint failed")
-      ) {
+      if (error instanceof Error && /unique/i.test(error.message))
         throw new Error("This name already exists.");
-      }
       throw error;
     }
-  }
-
-  archivePerson(id: number): void {
-    database.prepare("UPDATE people SET archived = 1 WHERE id = ?").run(id);
-  }
-
-  removePerson(id: number): "deleted" | "archived" {
-    try {
-      database.prepare("DELETE FROM people WHERE id = ?").run(id);
-      return "deleted";
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("FOREIGN KEY")) {
-        database.prepare("UPDATE people SET archived = 1 WHERE id = ?").run(id);
-        return "archived";
-      }
-      throw error;
-    }
-  }
-
-  createLunchDay(date: string): LunchDay {
-    let lunchDayId: number;
-    try {
-      const result = database
-        .prepare("INSERT INTO lunch_days (date, parcel_capacity) VALUES (?, 2)")
-        .run(date);
-      lunchDayId = Number(result.lastInsertRowid);
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("UNIQUE constraint failed")
-      ) {
-        throw new Error("This date already exists.");
-      }
-      throw error;
-    }
-    const activePeople = database
-      .prepare("SELECT id FROM people WHERE archived = 0")
-      .all() as Array<{ id: number }>;
-    const addAttendance = database.prepare(
-      "INSERT INTO attendance (lunch_day_id, person_id, attending, brings_home_food) VALUES (?, ?, 1, 0)",
+    const [person] = await database.query<PersonRow>(
+      "SELECT id, display_name, archived FROM people WHERE display_name = $1 AND archived = 0",
+      [displayName],
     );
-    const transaction = database.transaction(() =>
-      activePeople.forEach((person) =>
-        addAttendance.run(lunchDayId, person.id),
+    return toPerson(person);
+  }
+
+  async archivePerson(id: number): Promise<void> {
+    await databaseReady;
+    await database.execute("UPDATE people SET archived = 1 WHERE id = $1", [
+      id,
+    ]);
+  }
+
+  async removePerson(id: number): Promise<"deleted" | "archived"> {
+    await databaseReady;
+    const referenced = await database.query<{ found: number }>(
+      "SELECT 1 AS found FROM attendance WHERE person_id = $1 LIMIT 1",
+      [id],
+    );
+    if (referenced.length) {
+      await this.archivePerson(id);
+      return "archived";
+    }
+    await database.execute("DELETE FROM people WHERE id = $1", [id]);
+    return "deleted";
+  }
+
+  async createLunchDay(date: string): Promise<LunchDay> {
+    await databaseReady;
+    try {
+      await database.execute(
+        "INSERT INTO lunch_days (date, parcel_capacity) VALUES ($1, 2)",
+        [date],
+      );
+    } catch (error) {
+      if (error instanceof Error && /unique/i.test(error.message))
+        throw new Error("This date already exists.");
+      throw error;
+    }
+    const [day] = await database.query<LunchDayRow>(
+      "SELECT id, date, parcel_capacity, final_parcel_order, order_needs_reconfirmation FROM lunch_days WHERE date = $1",
+      [date],
+    );
+    const activePeople = await database.query<{ id: number | string }>(
+      "SELECT id FROM people WHERE archived = 0",
+    );
+    await Promise.all(
+      activePeople.map((person) =>
+        database.execute(
+          "INSERT INTO attendance (lunch_day_id, person_id, attending, brings_home_food) VALUES ($1, $2, 1, 0)",
+          [toId(day.id), toId(person.id)],
+        ),
       ),
     );
-    transaction();
-    return this.getLunchDay(lunchDayId)!;
+    return (await this.getLunchDay(toId(day.id)))!;
   }
 
-  updateAttendance(
+  async updateAttendance(
     lunchDayId: number,
     entries: Array<
       Pick<Attendance, "personId" | "attending" | "bringsHomeFood">
     >,
-  ): void {
-    const update = database.prepare(
-      "UPDATE attendance SET attending = ?, brings_home_food = ? WHERE lunch_day_id = ? AND person_id = ?",
-    );
-    const transaction = database.transaction(() =>
-      entries.forEach((entry) =>
-        update.run(
-          Number(entry.attending),
-          Number(entry.attending && entry.bringsHomeFood),
-          lunchDayId,
-          entry.personId,
+  ): Promise<void> {
+    await databaseReady;
+    await Promise.all(
+      entries.map((entry) =>
+        database.execute(
+          "UPDATE attendance SET attending = $1, brings_home_food = $2 WHERE lunch_day_id = $3 AND person_id = $4",
+          [
+            Number(entry.attending),
+            Number(entry.attending && entry.bringsHomeFood),
+            lunchDayId,
+            entry.personId,
+          ],
         ),
       ),
     );
-    transaction();
-    database
-      .prepare(
-        "UPDATE lunch_days SET order_needs_reconfirmation = CASE WHEN final_parcel_order IS NULL THEN 0 ELSE 1 END WHERE id = ?",
-      )
-      .run(lunchDayId);
+    await database.execute(
+      "UPDATE lunch_days SET order_needs_reconfirmation = CASE WHEN final_parcel_order IS NULL THEN 0 ELSE 1 END WHERE id = $1",
+      [lunchDayId],
+    );
   }
 
-  updateParcelCapacity(lunchDayId: number, parcelCapacity: number): void {
-    database
-      .prepare(
-        "UPDATE lunch_days SET parcel_capacity = ?, order_needs_reconfirmation = CASE WHEN final_parcel_order IS NULL THEN 0 ELSE 1 END WHERE id = ?",
-      )
-      .run(parcelCapacity, lunchDayId);
+  async updateParcelCapacity(
+    lunchDayId: number,
+    parcelCapacity: number,
+  ): Promise<void> {
+    await databaseReady;
+    await database.execute(
+      "UPDATE lunch_days SET parcel_capacity = $1, order_needs_reconfirmation = CASE WHEN final_parcel_order IS NULL THEN 0 ELSE 1 END WHERE id = $2",
+      [parcelCapacity, lunchDayId],
+    );
   }
 
-  confirmParcelOrder(lunchDayId: number, finalParcelOrder: number): void {
-    database
-      .prepare(
-        "UPDATE lunch_days SET final_parcel_order = ?, order_needs_reconfirmation = 0 WHERE id = ?",
-      )
-      .run(finalParcelOrder, lunchDayId);
+  async confirmParcelOrder(
+    lunchDayId: number,
+    finalParcelOrder: number,
+  ): Promise<void> {
+    await databaseReady;
+    await database.execute(
+      "UPDATE lunch_days SET final_parcel_order = $1, order_needs_reconfirmation = 0 WHERE id = $2",
+      [finalParcelOrder, lunchDayId],
+    );
   }
 
-  deleteLunchDay(id: number): void {
-    const result = database
-      .prepare("DELETE FROM lunch_days WHERE id = ?")
-      .run(id);
-    if (result.changes === 0) throw new Error("Lunch day was not found.");
+  async deleteLunchDay(id: number): Promise<void> {
+    await databaseReady;
+    if (!(await this.getLunchDay(id)))
+      throw new Error("Lunch day was not found.");
+    await database.execute("DELETE FROM lunch_days WHERE id = $1", [id]);
   }
 
-  setGroupOverride(
+  async setGroupOverride(
     lunchDayId: number,
     personId: number,
     groupNumber: number,
-  ): void {
-    database
-      .prepare(
-        "INSERT INTO group_overrides (lunch_day_id, person_id, group_number) VALUES (?, ?, ?) ON CONFLICT(lunch_day_id, person_id) DO UPDATE SET group_number = excluded.group_number",
-      )
-      .run(lunchDayId, personId, groupNumber);
+  ): Promise<void> {
+    await databaseReady;
+    await database.execute(
+      "INSERT INTO group_overrides (lunch_day_id, person_id, group_number) VALUES ($1, $2, $3) ON CONFLICT(lunch_day_id, person_id) DO UPDATE SET group_number = EXCLUDED.group_number",
+      [lunchDayId, personId, groupNumber],
+    );
   }
 
-  private getGroupOverrides(lunchDayId: number): Map<number, number> {
-    const rows = database
-      .prepare(
-        "SELECT person_id, group_number FROM group_overrides WHERE lunch_day_id = ?",
-      )
-      .all(lunchDayId) as Array<{ person_id: number; group_number: number }>;
-    return new Map(rows.map((row) => [row.person_id, row.group_number]));
+  private async getGroupOverrides(
+    lunchDayId: number,
+  ): Promise<Map<number, number>> {
+    const rows = await database.query<{
+      person_id: number | string;
+      group_number: number;
+    }>(
+      "SELECT person_id, group_number FROM group_overrides WHERE lunch_day_id = $1",
+      [lunchDayId],
+    );
+    return new Map(rows.map((row) => [toId(row.person_id), row.group_number]));
   }
 
-  getLunchDay(id: number): LunchDay | null {
-    const day = database
-      .prepare(
-        "SELECT id, date, parcel_capacity, final_parcel_order, order_needs_reconfirmation FROM lunch_days WHERE id = ?",
-      )
-      .get(id) as LunchDayRow | undefined;
+  async getLunchDay(id: number): Promise<LunchDay | null> {
+    await databaseReady;
+    const [day] = await database.query<LunchDayRow>(
+      "SELECT id, date, parcel_capacity, final_parcel_order, order_needs_reconfirmation FROM lunch_days WHERE id = $1",
+      [id],
+    );
     if (!day) return null;
-    this.backfillAttendance(day.id);
+    await this.backfillAttendance(toId(day.id));
     return this.hydrateLunchDay(day);
   }
 
-  listLunchDays(): LunchDay[] {
-    const days = database
-      .prepare(
-        "SELECT id, date, parcel_capacity, final_parcel_order, order_needs_reconfirmation FROM lunch_days ORDER BY date DESC",
-      )
-      .all() as LunchDayRow[];
-    days.forEach((day) => this.backfillAttendance(day.id));
-    return days.map((day) => this.hydrateLunchDay(day));
+  async listLunchDays(): Promise<LunchDay[]> {
+    await databaseReady;
+    const days = await database.query<LunchDayRow>(
+      "SELECT id, date, parcel_capacity, final_parcel_order, order_needs_reconfirmation FROM lunch_days ORDER BY date DESC",
+    );
+    await Promise.all(days.map((day) => this.backfillAttendance(toId(day.id))));
+    return Promise.all(days.map((day) => this.hydrateLunchDay(day)));
   }
 
-  // Keeps existing lunch days in sync with people added to the roster after the day was created.
-  private backfillAttendance(lunchDayId: number): void {
-    database
-      .prepare(
-        `INSERT INTO attendance (lunch_day_id, person_id, attending, brings_home_food)
-         SELECT ?, p.id, 1, 0 FROM people p
-         WHERE p.archived = 0
-           AND NOT EXISTS (
-             SELECT 1 FROM attendance a
-             WHERE a.lunch_day_id = ? AND a.person_id = p.id
-           )`,
-      )
-      .run(lunchDayId, lunchDayId);
+  private async backfillAttendance(lunchDayId: number): Promise<void> {
+    await database.execute(
+      `INSERT INTO attendance (lunch_day_id, person_id, attending, brings_home_food) SELECT $1, p.id, 1, 0 FROM people p WHERE p.archived = 0 AND NOT EXISTS (SELECT 1 FROM attendance a WHERE a.lunch_day_id = $2 AND a.person_id = p.id)`,
+      [lunchDayId, lunchDayId],
+    );
   }
 
-  private hydrateLunchDay(day: LunchDayRow): LunchDay {
+  private async hydrateLunchDay(day: LunchDayRow): Promise<LunchDay> {
+    const id = toId(day.id);
     const attendance = (
-      database
-        .prepare(
-          `SELECT a.person_id, p.display_name, a.attending, a.brings_home_food FROM attendance a JOIN people p ON p.id = a.person_id WHERE a.lunch_day_id = ? ORDER BY p.display_name`,
-        )
-        .all(day.id) as AttendanceRow[]
+      await database.query<AttendanceRow>(
+        "SELECT a.person_id, p.display_name, a.attending, a.brings_home_food FROM attendance a JOIN people p ON p.id = a.person_id WHERE a.lunch_day_id = $1 ORDER BY p.display_name",
+        [id],
+      )
     ).map((entry) => ({
-      personId: entry.person_id,
+      personId: toId(entry.person_id),
       displayName: entry.display_name,
       attending: Boolean(entry.attending),
       bringsHomeFood: Boolean(entry.brings_home_food),
     }));
     return {
-      id: day.id,
+      id,
       date: day.date,
       parcelCapacity: day.parcel_capacity,
       parcelRecommendation: recommendParcels(attendance, day.parcel_capacity),
@@ -237,7 +240,7 @@ export class LunchRepository {
       attendance,
       groups: applyGroupOverrides(
         allocateGroups(attendance),
-        this.getGroupOverrides(day.id),
+        await this.getGroupOverrides(id),
       ),
     };
   }

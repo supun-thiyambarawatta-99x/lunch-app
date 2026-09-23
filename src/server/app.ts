@@ -18,9 +18,12 @@ const billingService = new BillingService(
 export const app = express();
 app.use(express.json());
 
-const handle = (action: () => unknown, response: express.Response) => {
+const handle = async (
+  action: () => unknown | Promise<unknown>,
+  response: express.Response,
+) => {
   try {
-    response.json(action());
+    response.json(await action());
   } catch (error) {
     response.status(400).json({
       error: error instanceof Error ? error.message : "Request failed.",
@@ -29,14 +32,18 @@ const handle = (action: () => unknown, response: express.Response) => {
 };
 
 app.get("/api/bootstrap", (_request, response) =>
-  handle(
-    () => ({
-      people: rosterService.listPeople(),
-      lunchDays: lunchDayService.listLunchDays(),
-      balances: billingService.listBalances(),
-    }),
-    response,
-  ),
+  handle(async () => {
+    const [people, lunchDays, balances] = await Promise.all([
+      rosterService.listPeople(),
+      lunchDayService.listLunchDays(),
+      billingService.listBalances(),
+    ]);
+    return {
+      people,
+      lunchDays,
+      balances,
+    };
+  }, response),
 );
 
 app.get("/api/people", (_request, response) =>
@@ -46,14 +53,16 @@ app.post("/api/people", (request, response) =>
   handle(() => rosterService.createPerson(request.body.displayName), response),
 );
 app.post("/api/people/:id/archive", (request, response) =>
-  handle(() => {
-    rosterService.archivePerson(Number(request.params.id));
+  handle(async () => {
+    await rosterService.archivePerson(Number(request.params.id));
     return { ok: true };
   }, response),
 );
 app.delete("/api/people/:id", (request, response) =>
   handle(
-    () => ({ status: rosterService.removePerson(Number(request.params.id)) }),
+    async () => ({
+      status: await rosterService.removePerson(Number(request.params.id)),
+    }),
     response,
   ),
 );
@@ -67,8 +76,8 @@ app.get("/api/lunch-days/:id", (request, response) =>
   ),
 );
 app.delete("/api/lunch-days/:id", (request, response) =>
-  handle(() => {
-    lunchDayService.deleteLunchDay(Number(request.params.id));
+  handle(async () => {
+    await lunchDayService.deleteLunchDay(Number(request.params.id));
     return { ok: true };
   }, response),
 );
